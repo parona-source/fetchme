@@ -12,6 +12,7 @@ CPPFLAGS := -D_PACKAGE_NAME=\"$(NAME)\" -D_PACKAGE_VERSION=\"$(VERSION)\" $(MODU
 
 TARGET = $(OUTDIR)/$(NAME)
 OBJECTS = $(SOURCES:$(SRCDIR)/%.c=obj/%.o)
+PROFDIR = prof
 OUTDIR = bin
 
 DESTDIR =
@@ -27,7 +28,33 @@ INSTALL_DATA = install -m644
 INSTALL_PROGRAM = $(INSTALL)
 RM = rm -f
 
-.PHONY: all install uninstall clean format
+ifndef $(COMPILER)
+ifeq ($(shell $(CC) -v 2>&1 | grep -c "clang version"), 1)
+	COMPILER = clang
+else ifeq ($(shell $(CC) -v 2>&1 | grep -c "gcc version"), 1)
+	COMPILER = gcc
+endif
+endif
+
+ifeq ($(PGO),instrument)
+ifeq ($(COMPILER),clang)
+	CFLAGS += -fprofile-instr-generate=$(PROFDIR)/$(NAME).profraw
+endif
+ifeq ($(COMPILER),gcc)
+	CFLAGS += -fprofile-generate=$(PROFDIR)
+endif
+endif
+
+ifeq ($(PGO),optimize)
+ifeq ($(COMPILER),clang)
+	CFLAGS += -fprofile-instr-use=$(PROFDIR)/$(NAME).profdata
+endif
+ifeq ($(COMPILER),gcc)
+	CFLAGS += -fprofile-use=$(PROFDIR)
+endif
+endif
+
+.PHONY: all install uninstall clean format pgo
 
 all: clean $(TARGET)
 
@@ -37,7 +64,7 @@ $(TARGET): $(OBJECTS) | $(OUTDIR)
 obj/%.o : $(SRCDIR)/%.c | obj/modules
 	$(CC) -o $@ $(CFLAGS) $(CPPFLAGS) $^ -c
 
-$(OUTDIR) obj/modules:
+$(PROFDIR) $(OUTDIR) obj/modules:
 	mkdir -p $@
 
 install: | $(TARGET)
@@ -56,18 +83,26 @@ uninstall:
 clean:
 	-rm -rf $(OUTDIR) obj
 
+clean-prof:
+	-rm -rf $(PROFDIR)
+
 format:
 	@find . -iname *.h -o -iname *.c | xargs clang-format -style=file:.clang-format -i
 
-
-pgo:
-	@# only clang is supported for this PGO
-	if [[ -f fetchme.profdata ]]; then \
-		make CC=clang PGO=use && $(rm) fetchme.prof*; \
-	else \
-		make CC=clang PGO=gen && \
+pgo: | $(PROFDIR)
+ifneq (, $(filter $(COMPILER), clang gcc))
+	make clean-prof
+	make PGO=instrument
 	for x in {0..100}; do \
-		LLVM_PROFILE_FILE=fetchme.profraw ./bin/fetchme > /dev/null; \
-	done; \
-	llvm-profdata merge -output=fetchme.profdata fetchme.profraw; \
-	fi
+		./$(TARGET) > /dev/null; \
+	done
+ifeq ($(COMPILER), clang)
+	export LLVM_PROFILE_FILE="${PROFDIR}/$(NAME).profraw"
+	llvm-profdata merge -output=${PROFDIR}/$(NAME).profdata ${PROFDIR}/$(NAME).profraw
+endif
+	make PGO=optimize
+	make clean-prof
+else
+	@echo "Only clang or gcc are supported for pgo"
+endif
+
