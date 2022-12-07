@@ -73,7 +73,7 @@ install: | $(TARGET)
 	$(INSTALL_DATA) docs/fetchme.1.bz2 $(DESTDIR)$(MAN1DIR)
 
 install-strip:
-	make INSTALL_PROGRAM="install -s" install
+	$(MAKE) INSTALL_PROGRAM="install -s" install
 
 uninstall:
 	-rm $(DESTDIR)$(BINDIR)/$(NAME) $(DESTDIR)/$(MAN1DIR)/fetchme.1.bz2
@@ -91,8 +91,8 @@ format:
 
 pgo: | $(PROFDIR)
 ifneq (, $(filter $(COMPILER), clang gcc))
-	make clean-prof
-	make PGO=instrument
+	$(MAKE) clean-prof
+	$(MAKE) PGO=instrument
 	for x in {0..100}; do \
 		./$(TARGET) > /dev/null; \
 	done
@@ -100,8 +100,8 @@ ifeq ($(COMPILER), clang)
 	export LLVM_PROFILE_FILE="${PROFDIR}/$(NAME).profraw"
 	llvm-profdata merge -output=${PROFDIR}/$(NAME).profdata ${PROFDIR}/$(NAME).profraw
 endif
-	make PGO=optimize
-	make clean-prof
+	$(MAKE) PGO=optimize
+	$(MAKE) clean-prof
 else
 	@echo "Only clang or gcc are supported for pgo"
 endif
