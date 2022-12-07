@@ -2,13 +2,11 @@ NAME = fetchme
 VERSION = 1.4.2
 
 CFLAGS ?= -O2 -pipe -g
-CPPFLAGS ?=
-LDFLAGS = -Wl,-O1,--as-needed
+LDFLAGS ?= -Wl,-O1,--as-needed
 
 include config_backend.mk
 
-EXTRA_CFLAGS += -std=c99
-CPPFLAGS := -D_PACKAGE_NAME=\"$(NAME)\" -D_PACKAGE_VERSION=\"$(VERSION)\" $(MODULES) $(CPPFLAGS)
+EXTRA_CFLAGS = -std=c99 -D_PACKAGE_NAME=\"$(NAME)\" -D_PACKAGE_VERSION=\"$(VERSION)\" $(MODULES)
 
 TARGET = $(OUTDIR)/$(NAME)
 OBJECTS = $(SOURCES:$(SRCDIR)/%.c=obj/%.o)
@@ -59,10 +57,10 @@ endif
 all: clean $(TARGET)
 
 $(TARGET): $(OBJECTS) | $(OUTDIR)
-	$(CC) -o $@ $(EXTRA_CFLAGS) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $(INCLUDE) $^ $(LDLIBS)
+	$(CC) -o $@ $(EXTRA_CFLAGS) $(CFLAGS) $(LDFLAGS) $(INCLUDE) $^ $(LDLIBS)
 
 obj/%.o : $(SRCDIR)/%.c | obj/modules
-	$(CC) -o $@ $(EXTRA_CFLAGS) $(CFLAGS) $(CPPFLAGS) $^ -c
+	$(CC) -o $@ $(EXTRA_CFLAGS) $(CFLAGS) $^ -c
 
 $(PROFDIR) $(OUTDIR) obj/modules:
 	mkdir -p $@
