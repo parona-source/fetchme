@@ -7,7 +7,7 @@ LDFLAGS = -Wl,-O1,--as-needed
 
 include config_backend.mk
 
-CFLAGS := -g -std=c99 $(CFLAGS)
+EXTRA_CFLAGS += -std=c99
 CPPFLAGS := -D_PACKAGE_NAME=\"$(NAME)\" -D_PACKAGE_VERSION=\"$(VERSION)\" $(MODULES) $(CPPFLAGS)
 
 TARGET = $(OUTDIR)/$(NAME)
@@ -38,19 +38,19 @@ endif
 
 ifeq ($(PGO),instrument)
 ifeq ($(COMPILER),clang)
-	CFLAGS += -fprofile-instr-generate=$(PROFDIR)/$(NAME).profraw
+	EXTRA_CFLAGS += -fprofile-instr-generate=$(PROFDIR)/$(NAME).profraw
 endif
 ifeq ($(COMPILER),gcc)
-	CFLAGS += -fprofile-generate=$(PROFDIR)
+	EXTRA_CFLAGS += -fprofile-generate=$(PROFDIR)
 endif
 endif
 
 ifeq ($(PGO),optimize)
 ifeq ($(COMPILER),clang)
-	CFLAGS += -fprofile-instr-use=$(PROFDIR)/$(NAME).profdata
+	EXTRA_CFLAGS += -fprofile-instr-use=$(PROFDIR)/$(NAME).profdata
 endif
 ifeq ($(COMPILER),gcc)
-	CFLAGS += -fprofile-use=$(PROFDIR)
+	EXTRA_CFLAGS += -fprofile-use=$(PROFDIR)
 endif
 endif
 
@@ -59,10 +59,10 @@ endif
 all: clean $(TARGET)
 
 $(TARGET): $(OBJECTS) | $(OUTDIR)
-	$(CC) -o $@ $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $(INCLUDE) $^ $(LDLIBS)
+	$(CC) -o $@ $(EXTRA_CFLAGS) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $(INCLUDE) $^ $(LDLIBS)
 
 obj/%.o : $(SRCDIR)/%.c | obj/modules
-	$(CC) -o $@ $(CFLAGS) $(CPPFLAGS) $^ -c
+	$(CC) -o $@ $(EXTRA_CFLAGS) $(CFLAGS) $(CPPFLAGS) $^ -c
 
 $(PROFDIR) $(OUTDIR) obj/modules:
 	mkdir -p $@
