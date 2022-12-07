@@ -82,10 +82,10 @@ endif
 ifneq (,$(filter $(M_RESOLUTION),Y y))
 ifneq (,$(filter $(M_RESOLUTION_XCB),Y y)) # XCB method
 	SOURCES += $(SRCDIR)/modules/res.c
-	M_LFLAGS += -lxcb
+	LDLIBS += -lxcb
 else
 	SOURCES += $(SRCDIR)/modules/resolution.c
-	M_LFLAGS += -lX11
+	LDLIBS += -lX11
 endif
 	MODULES += -DRESOLUTION
 # refresh rate the screen is using. detected from libxrandr.
@@ -96,10 +96,10 @@ endif
 ifneq (,$(filter $(M_REFRESH_RATE),Y y))
 ifneq (,$(filter $(M_REFRESH_RATE_XCB),Y y)) # XCB method
 	SOURCES += $(SRCDIR)/modules/ref.c
-	M_LFLAGS += -lxcb-randr
+	LDLIBS += -lxcb-randr
 else
 	SOURCES += $(SRCDIR)/modules/refresh_rate.c
-	M_LFLAGS += -lXrandr
+	LDLIBS += -lXrandr
 endif
 	MODULES += -DREFRESH_RATE
 endif
@@ -111,7 +111,7 @@ ifneq (,$(filter $(M_WM),Y y))
 	MODULES += -DWM
 	SOURCES += $(SRCDIR)/modules/wm.c
 ifeq (,$(filter $(M_WM_WAYLAND), Y y))
-	M_LFLAGS += -lX11
+	LDLIBS += -lX11
 else
 	MODULES += -DWAYLAND
 endif
@@ -146,7 +146,7 @@ endif # CPU
 ifneq (,$(filter $(M_GPU),Y y))
 	MODULES += -DGPU
 	SOURCES += $(SRCDIR)/modules/gpu_info.c
-	M_LFLAGS += -lpci
+	LDLIBS += -lpci
 endif
 
 # memory usage.

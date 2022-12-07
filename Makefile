@@ -32,7 +32,7 @@ RM = rm -f
 all: clean $(TARGET)
 
 $(TARGET): $(OBJECTS) | $(OUTDIR)
-	$(CC) -o $@ $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $(INCLUDE) $^ $(M_LFLAGS)
+	$(CC) -o $@ $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $(INCLUDE) $^ $(LDLIBS)
 
 obj/%.o : $(SRCDIR)/%.c | obj/modules
 	$(CC) -o $@ $(CFLAGS) $(CPPFLAGS) $^ -c
