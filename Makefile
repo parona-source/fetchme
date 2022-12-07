@@ -70,13 +70,13 @@ $(PROFDIR) $(OUTDIR) obj/modules:
 install: | $(TARGET)
 	$(INSTALL_DIR) $(DESTDIR)/$(BINDIR) $(DESTDIR)/$(MAN1DIR)
 	$(INSTALL_PROGRAM) $(TARGET) $(DESTDIR)$(BINDIR)
-	$(INSTALL_DATA) docs/fetchme.1.bz2 $(DESTDIR)$(MAN1DIR)
+	$(INSTALL_DATA) docs/fetchme.1 $(DESTDIR)$(MAN1DIR)
 
 install-strip:
 	$(MAKE) INSTALL_PROGRAM="install -s" install
 
 uninstall:
-	-rm $(DESTDIR)$(BINDIR)/$(NAME) $(DESTDIR)/$(MAN1DIR)/fetchme.1.bz2
+	-rm $(DESTDIR)$(BINDIR)/$(NAME) $(DESTDIR)/$(MAN1DIR)/fetchme.1
 	-rmdir -p $(DESTDIR)$(BINDIR)
 	-rmdir -p $(DESTDIR)$(MAN1DIR)
 
