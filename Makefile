@@ -1,67 +1,60 @@
-TOPDIR 	:=  ./src
-IVAR 	:=  -I. -I$(TOPDIR)/include/
-PREFIX	 =  /usr
-INSTALLBINDIR=${PREFIX}/bin
-OBJDIR   = 	obj
-BINDIR   = 	bin
-rm       =  rm -rf
+NAME = fetchme
+VERSION = 1.4.2
 
-# Target and Version
-TARGET 	 = fetchme
-VERSION  = 1.4.1
+CFLAGS ?= -O2 -pipe -g
+CPPFLAGS ?=
+LDFLAGS = -Wl,-O1,--as-needed
+
 include config_backend.mk
-# These variables depend on values from config_backend.mk
-INCLUDES:=  $(wildcard $(SRCDIR)/modules/include/*.h)
-OBJECTS :=  $(SOURCES:$(SRCDIR)/%.c=$(OBJDIR)/%.o)
-include cc_and_flags.mk
 
-# rebuild with `make'
-$(TARGET):
-	$(MAKE) remove
-	@# create these directories if needed
-	mkdir -p obj/modules
-	mkdir -p bin/
-	@# compile with multiple threads, then link.
-	@echo -e "CC =\t$(CC)"
-	@echo -e "LD =\t$(LINKER)"
-	@echo -e "Building $(TARGET)-$(VERSION)"
-	$(MAKE) $(OBJECTS)
-	$(MAKE) link
+CFLAGS := -g -std=c99 $(CFLAGS)
+CPPFLAGS := -D_PACKAGE_NAME=\"$(NAME)\" -D_PACKAGE_VERSION=\"$(VERSION)\" $(MODULES) $(CPPFLAGS)
 
-link:
-	$(LINKER) $(OBJECTS) $(LFLAGS) -o $(BINDIR)/$(TARGET)
-	@echo "$(TARGET)-$(VERSION) built!"
+TARGET = $(OUTDIR)/$(NAME)
+OBJECTS = $(SOURCES:$(SRCDIR)/%.c=obj/%.o)
+OUTDIR = bin
 
-$(OBJECTS): $(OBJDIR)/%.o : $(SRCDIR)/%.c
-	$(CC) $(CFLAGS) -c $< -o $@
-	@echo "Compiled "$<" successfully!"
-.PHONY: clean
+DESTDIR =
+PREFIX = /usr/local
+BINDIR = $(PREFIX)/bin
+DATADIR = $(PREFIX)/share
+MANDIR = $(DATADIR)/man
+MAN1DIR = $(MANDIR)/man1
 
+INSTALL = install
+INSTALL_DIR = install -d
+INSTALL_DATA = install -m644
+INSTALL_PROGRAM = $(INSTALL)
+RM = rm -f
 
-clean:
-	$(rm) $(OBJECTS)
-	@echo "Cleanup complete!"
+.PHONY: all install uninstall clean format
 
-remove: clean
-	$(rm) $(BINDIR)/$(TARGET)
-	@echo "Executable removed!"
+all: clean $(TARGET)
 
-.PHONY: install
+$(TARGET): $(OBJECTS) | $(OUTDIR)
+	$(CC) -o $@ $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $(INCLUDE) $^ $(M_LFLAGS)
 
-install:
-	mkdir -p ${INSTALLBINDIR}
-	cp -r $(BINDIR)/$(TARGET) ${INSTALLBINDIR}
-	@echo "Executable installed!"
-	mkdir -p /usr/share/man/man1
-	cp docs/fetchme.1.bz2 /usr/share/man/man1/
-	@echo "Man page installed!"
+obj/%.o : $(SRCDIR)/%.c | obj/modules
+	$(CC) -o $@ $(CFLAGS) $(CPPFLAGS) $^ -c
 
+$(OUTDIR) obj/modules:
+	mkdir -p $@
+
+install: | $(TARGET)
+	$(INSTALL_DIR) $(DESTDIR)/$(BINDIR) $(DESTDIR)/$(MAN1DIR)
+	$(INSTALL_PROGRAM) $(TARGET) $(DESTDIR)$(BINDIR)
+	$(INSTALL_DATA) docs/fetchme.1.bz2 $(DESTDIR)$(MAN1DIR)
+
+install-strip:
+	make INSTALL_PROGRAM="install -s" install
 
 uninstall:
-	$(rm) ${INSTALLBINDIR}/$(TARGET)
-	@echo "Exectuable removed!"
-	rm /usr/share/man/man1/fetchme.1.bz2
-	@echo "Man page uninstalled!"
+	-rm $(DESTDIR)$(BINDIR)/$(NAME) $(DESTDIR)/$(MAN1DIR)/fetchme.1.bz2
+	-rmdir -p $(DESTDIR)$(BINDIR)
+	-rmdir -p $(DESTDIR)$(MAN1DIR)
+
+clean:
+	-rm -rf $(OUTDIR) obj
 
 format:
 	@find . -iname *.h -o -iname *.c | xargs clang-format -style=file:.clang-format -i
