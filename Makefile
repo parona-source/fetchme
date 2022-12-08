@@ -65,7 +65,7 @@ ifeq ($(COMPILER),gcc)
 endif
 endif
 
-.PHONY: all install uninstall clean format pgo
+.PHONY: all install uninstall clean clean-prof format pgo
 
 all: clean $(TARGET)
 
@@ -104,9 +104,7 @@ pgo: | $(PROFDIR)
 ifneq (, $(filter $(COMPILER), clang gcc))
 	$(MAKE) clean-prof
 	$(MAKE) PGO=instrument
-	for x in {0..100}; do \
-		./$(TARGET) > /dev/null; \
-	done
+	@$(foreach x, $(shell echo {1..100}), ./$(TARGET) > /dev/null;)
 ifeq ($(COMPILER), clang)
 	export LLVM_PROFILE_FILE="${PROFDIR}/$(NAME).profraw"
 	llvm-profdata merge -output=${PROFDIR}/$(NAME).profdata ${PROFDIR}/$(NAME).profraw
