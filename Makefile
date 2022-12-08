@@ -5,13 +5,27 @@ CFLAGS ?= -O2 -pipe -g
 LDFLAGS ?= -Wl,-O1,--as-needed
 
 include config_backend.mk
+# Basic
+BASE_FLAGS = -std=c99
+# Warnings
+BASE_FLAGS += -Wall -Wextra -Wpedantic -Wshadow -Warray-bounds=2 -Wformat=2 \
+	      -Wfloat-equal -Wlogical-op -Wundef -Wunreachable-code -Wvla -Wwrite-strings \
+	      -Wcast-align=strict -Wcast-qual -Wbad-function-cast
+# Suggest attribute warning(s)
+BASE_FLAGS += $(foreach case, pure const noreturn malloc format cold, -Wsuggest-attribute=$(case))
+# Error
+BASE_FLAGS += -Werror=format-security -Werror=array-bounds
+# Disable warnings
+BASE_FLAGS += -Wno-unknown-pragmas -Wno-unused-result
+#Preprocessor options
+BASE_FLAGS += -D_PACKAGE_NAME=\"$(NAME)\" -D_PACKAGE_VERSION=\"$(VERSION)\" $(MODULES)
 
-EXTRA_CFLAGS = -std=c99 -D_PACKAGE_NAME=\"$(NAME)\" -D_PACKAGE_VERSION=\"$(VERSION)\" $(MODULES)
+PROFDIR = prof
+OBJDIR = obj
+OUTDIR = bin
 
 TARGET = $(OUTDIR)/$(NAME)
-OBJECTS = $(SOURCES:$(SRCDIR)/%.c=obj/%.o)
-PROFDIR = prof
-OUTDIR = bin
+OBJECTS = $(SOURCES:$(SRCDIR)/%.c=$(OBJDIR)/%.o)
 
 DESTDIR =
 PREFIX = /usr/local
@@ -24,7 +38,6 @@ INSTALL = install
 INSTALL_DIR = install -d
 INSTALL_DATA = install -m644
 INSTALL_PROGRAM = $(INSTALL)
-RM = rm -f
 
 ifndef $(COMPILER)
 ifeq ($(shell $(CC) -v 2>&1 | grep -c "clang version"), 1)
@@ -57,12 +70,12 @@ endif
 all: clean $(TARGET)
 
 $(TARGET): $(OBJECTS) | $(OUTDIR)
-	$(CC) -o $@ $(EXTRA_CFLAGS) $(CFLAGS) $(LDFLAGS) $(INCLUDE) $^ $(LDLIBS)
+	$(CC) -o $@ $(BASE_FLAGS) $(CFLAGS) $(LDFLAGS) $(INCLUDE) $^ $(LDLIBS)
 
-obj/%.o : $(SRCDIR)/%.c | obj/modules
-	$(CC) -o $@ $(EXTRA_CFLAGS) $(CFLAGS) $^ -c
+$(OBJDIR)/%.o : $(SRCDIR)/%.c | $(OBJDIR)/modules
+	$(CC) -o $@ $(BASE_FLAGS) $(CFLAGS) $^ -c
 
-$(PROFDIR) $(OUTDIR) obj/modules:
+$(PROFDIR) $(OUTDIR) $(OBJDIR)/modules:
 	mkdir -p $@
 
 install: | $(TARGET)
@@ -79,10 +92,10 @@ uninstall:
 	-rmdir -p $(DESTDIR)$(MAN1DIR)
 
 clean:
-	-rm -rf $(OUTDIR) obj
+	-rm -r $(OUTDIR) $(OBJDIR)
 
 clean-prof:
-	-rm -rf $(PROFDIR)
+	-rm -r $(PROFDIR)
 
 format:
 	@find . -iname *.h -o -iname *.c | xargs clang-format -style=file:.clang-format -i
