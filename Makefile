@@ -8,7 +8,7 @@ include config_backend.mk
 # Basic
 BASE_FLAGS = -std=c99
 # Warnings
-BASE_FLAGS += -Wall -Wextra -Wpedantic -Wshadow -Warray-bounds=2 -Wformat=2 \
+BASE_FLAGS += -Wall -Wextra -Wpedantic -Wshadow -Warray-bounds -Wformat=2 \
 	      -Wfloat-equal -Wlogical-op -Wundef -Wunreachable-code -Wvla -Wwrite-strings \
 	      -Wcast-align=strict -Wcast-qual -Wbad-function-cast
 # Suggest attribute warning(s)
@@ -20,7 +20,34 @@ BASE_FLAGS += -Wno-unknown-pragmas -Wno-unused-result
 #Preprocessor options
 BASE_FLAGS += -D_PACKAGE_NAME=\"$(NAME)\" -D_PACKAGE_VERSION=\"$(VERSION)\" $(MODULES)
 
+ifndef $(COMPILER)
+ifeq ($(shell $(CC) -v 2>&1 | grep -c "clang version"), 1)
+	COMPILER = clang
+else ifeq ($(shell $(CC) -v 2>&1 | grep -c "gcc version"), 1)
+	COMPILER = gcc
+endif
+endif
+
 PROFDIR = prof
+
+ifeq ($(PGO),instrument)
+ifeq ($(COMPILER),clang)
+	BASE_FLAGS += -fprofile-instr-generate=$(PROFDIR)/$(NAME).profraw
+endif
+ifeq ($(COMPILER),gcc)
+	BASE_FLAGS += -fprofile-generate=$(PROFDIR)
+endif
+endif
+
+ifeq ($(PGO),optimize)
+ifeq ($(COMPILER),clang)
+	BASE_FLAGS += -fprofile-instr-use=$(PROFDIR)/$(NAME).profdata
+endif
+ifeq ($(COMPILER),gcc)
+	BASE_FLAGS += -fprofile-use=$(PROFDIR)
+endif
+endif
+
 OBJDIR = obj
 OUTDIR = bin
 
@@ -38,32 +65,6 @@ INSTALL = install
 INSTALL_DIR = install -d
 INSTALL_DATA = install -m644
 INSTALL_PROGRAM = $(INSTALL)
-
-ifndef $(COMPILER)
-ifeq ($(shell $(CC) -v 2>&1 | grep -c "clang version"), 1)
-	COMPILER = clang
-else ifeq ($(shell $(CC) -v 2>&1 | grep -c "gcc version"), 1)
-	COMPILER = gcc
-endif
-endif
-
-ifeq ($(PGO),instrument)
-ifeq ($(COMPILER),clang)
-	EXTRA_CFLAGS += -fprofile-instr-generate=$(PROFDIR)/$(NAME).profraw
-endif
-ifeq ($(COMPILER),gcc)
-	EXTRA_CFLAGS += -fprofile-generate=$(PROFDIR)
-endif
-endif
-
-ifeq ($(PGO),optimize)
-ifeq ($(COMPILER),clang)
-	EXTRA_CFLAGS += -fprofile-instr-use=$(PROFDIR)/$(NAME).profdata
-endif
-ifeq ($(COMPILER),gcc)
-	EXTRA_CFLAGS += -fprofile-use=$(PROFDIR)
-endif
-endif
 
 .PHONY: all install uninstall clean clean-prof format pgo
 
@@ -95,7 +96,7 @@ clean:
 	-rm -r $(OUTDIR) $(OBJDIR)
 
 clean-prof:
-	-rm -r $(PROFDIR)
+	-rm $(PROFDIR)/*
 
 format:
 	@find . -iname *.h -o -iname *.c | xargs clang-format -style=file:.clang-format -i
@@ -104,9 +105,9 @@ pgo: | $(PROFDIR)
 ifneq (, $(filter $(COMPILER), clang gcc))
 	$(MAKE) clean-prof
 	$(MAKE) PGO=instrument
-	@$(foreach x, $(shell echo {1..100}), ./$(TARGET) > /dev/null;)
+	@echo "Running the program 100 times for profiling data"
+	@$(foreach x, $(shell echo {1..100}), LLVM_PROFILE_FILE="$(PROFDIR)/$(NAME).profraw" ./$(TARGET) > /dev/null;)
 ifeq ($(COMPILER), clang)
-	export LLVM_PROFILE_FILE="${PROFDIR}/$(NAME).profraw"
 	llvm-profdata merge -output=${PROFDIR}/$(NAME).profdata ${PROFDIR}/$(NAME).profraw
 endif
 	$(MAKE) PGO=optimize
